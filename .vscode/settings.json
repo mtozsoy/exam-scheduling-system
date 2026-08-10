@@ -1,0 +1,13 @@
+{
+    "editor.semanticTokenColorCustomizations": {
+    "[Antigravity]": {
+        "enabled": true,
+        "rules": {
+            "variable": "#FFB86C", // Normal değişkenler (Turuncu)
+            "property": "#8BE9FD", // Sınıf özellikleri, db kolonları (Açık Mavi)
+            "parameter": "#FF79C6" // Parametreler (Pembe)
+        }
+    }
+},
+"workbench.colorTheme": "Monospace IDX Dark"
+}

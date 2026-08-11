@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.models.exam import Exam
 from app.models.student_course import StudentCourse
+from app.models.exam_room import ExamRoom
+from app.models.invigilator import Invigilator
+from app.models.exam_invigilator import ExamInvigilator
 
 class SchedulingService:
     @staticmethod
@@ -126,3 +129,191 @@ class SchedulingService:
             current_date += timedelta(days=1)
             
         return available_slots
+
+    @staticmethod
+    def distribute_students_to_rooms(
+        db: Session,
+        course_code: str,
+        available_rooms: list
+    ) -> dict:
+        # 1. İlgili dersi alan öğrencilerin numaralarını bul
+        enrollments = db.execute(
+            select(StudentCourse.student_number).where(StudentCourse.course_code == course_code)
+        ).scalars().all()
+        
+        students = list(enrollments)
+        total_students = len(students)
+        
+        # 2. Seçilen dersliklerin (available_rooms) toplam kapasitesini hesapla
+        total_capacity = sum(room.capacity for room in available_rooms)
+        
+        # 3. Kapasite yeterliliğini kontrol et
+        if total_students > total_capacity:
+            return {
+                "success": False,
+                "message": "Toplam kapasite yetersiz!",
+                "total_students": total_students,
+                "total_capacity": total_capacity,
+                "missing_capacity": total_students - total_capacity,
+                "distributions": []
+            }
+            
+        # 4. Öğrencileri kapasiteyi aşmadan dersliklere (odaklara) bölüştür
+        distributions = []
+        student_idx = 0
+        
+        for room in available_rooms:
+            # Eğer dağıtılacak öğrenci kalmadıysa boşuna diğer derslikleri gezme
+            if student_idx >= total_students:
+                break
+                
+            # Dersliğin kapasitesi kadar öğrenci al (Slice)
+            assigned_students = students[student_idx : student_idx + room.capacity]
+            
+            distributions.append({
+                "room_code": room.room_code,
+                "capacity": room.capacity,
+                "assigned_count": len(assigned_students),
+                "students": assigned_students
+            })
+            
+            # Index'i atadığımız kişi sayısı kadar ileri kaydır
+            student_idx += room.capacity
+            
+        # Sonucu frontend'in çok rahat kullanabileceği bir JSON yapısıyla dönüyoruz
+        return {
+            "success": True,
+            "message": "Öğrenciler dersliklere başarıyla yerleştirildi.",
+            "total_students": total_students,
+            "total_capacity": total_capacity,
+            "distributions": distributions
+        }
+
+    @staticmethod
+    def generate_scheduling_proposals(
+        db: Session,
+        course_code: str,
+        duration_minutes: int,
+        start_date: date,
+        end_date: date,
+        daily_start_time: time,
+        daily_end_time: time,
+        available_rooms: list
+    ) -> dict:
+        
+        # 1. Önce öğrenci çakışması yaratmayan güvenli zaman dilimlerini (slotları) hesapla
+        available_slots = SchedulingService.suggest_exam_time_slots(
+            db=db,
+            course_code=course_code,
+            duration_minutes=duration_minutes,
+            start_date=start_date,
+            end_date=end_date,
+            daily_start_time=daily_start_time,
+            daily_end_time=daily_end_time
+        )
+        
+        if not available_slots:
+            return {
+                "success": False,
+                "message": "Planlama Başarısız: Öğrenci çakışması yaratmayacak hiçbir uygun boş zaman bulunamadı.",
+                "proposals": []
+            }
+            
+        # 2. Mevcut sınav saatlerini ve kullanılan derslikleri çek
+        existing_exams = db.execute(
+            select(Exam).where(Exam.date >= start_date).where(Exam.date <= end_date)
+        ).scalars().all()
+        
+        exam_times = {}
+        for ex in existing_exams:
+            ex_start = datetime.combine(ex.date, ex.start_time)
+            ex_end = ex_start + timedelta(minutes=ex.duration_minutes)
+            exam_times[ex.exam_id] = (ex_start, ex_end)
+            
+        exam_rooms = db.execute(select(ExamRoom)).scalars().all()
+        room_busy_slots = defaultdict(list)
+        for er in exam_rooms:
+            if er.exam_id in exam_times:
+                room_busy_slots[er.room_code].append(exam_times[er.exam_id])
+
+        # Mevcut gözetmenlerin meşguliyetlerini çek
+        exam_invigilators = db.execute(select(ExamInvigilator)).scalars().all()
+        invigilator_busy_slots = defaultdict(list)
+        for ei in exam_invigilators:
+            if ei.exam_id in exam_times:
+                invigilator_busy_slots[ei.invigilator_id].append(exam_times[ei.exam_id])
+                
+        # Sistemdeki tüm gözetmenleri al (Müsaitlik kontrolü için)
+        all_invigilators = db.execute(select(Invigilator)).scalars().all()
+
+        # 3. Her bir güvenli zaman dilimi için derslik kapasitelerini dinamik olarak test et
+        proposals = []
+        for slot in available_slots:
+            slot_start = datetime.fromisoformat(f"{slot['date']}T{slot['start_time']}")
+            slot_end = datetime.fromisoformat(f"{slot['date']}T{slot['end_time']}")
+            
+            # Bu saatte dolu olmayan (tamamen müsait) derslikleri filtrele
+            free_rooms = []
+            for room in available_rooms:
+                is_room_busy = False
+                for busy_start, busy_end in room_busy_slots[room.room_code]:
+                    # Çakışma kontrolü (Saatlerin kesişmesi)
+                    if slot_start < busy_end and busy_start < slot_end:
+                        is_room_busy = True
+                        break
+                
+                if not is_room_busy:
+                    free_rooms.append(room)
+            
+            # Sadece bu saatte boş olan dersliklerle kapasite testi ve öğrenci dağılımı yap
+            distribution_result = SchedulingService.distribute_students_to_rooms(
+                db=db, 
+                course_code=course_code, 
+                available_rooms=free_rooms
+            )
+            
+            # Eğer derslik kapasitesi yeterliyse Gözetmen kontrolüne geç
+            if distribution_result.get("success"):
+                distributions = distribution_result["distributions"]
+                needed_invigilator_count = len(distributions)
+                
+                # Bu saatte müsait olan gözetmenleri filtrele
+                free_invigilators = []
+                for inv in all_invigilators:
+                    is_inv_busy = False
+                    for busy_start, busy_end in invigilator_busy_slots[inv.invigilator_id]:
+                        if slot_start < busy_end and busy_start < slot_end:
+                            is_inv_busy = True
+                            break
+                    
+                    if not is_inv_busy:
+                        free_invigilators.append(inv)
+                        
+                # Eğer yeterli sayıda müsait gözetmen varsa öneriyi kaydet
+                if len(free_invigilators) >= needed_invigilator_count:
+                    assigned_invigilators = free_invigilators[:needed_invigilator_count]
+                    
+                    # Her dersliğe bir gözetmen ata
+                    for i, dist in enumerate(distributions):
+                        dist["invigilator_id"] = assigned_invigilators[i].invigilator_id
+                        
+                    proposals.append({
+                        "date": slot["date"],
+                        "start_time": slot["start_time"],
+                        "end_time": slot["end_time"],
+                        "total_students": distribution_result["total_students"],
+                        "rooms": distributions
+                    })
+                
+        if not proposals:
+            return {
+                "success": False,
+                "message": "Öğrenci çakışması olmayan zamanlar bulundu ancak o saatlerde boş derslik veya yeterli sayıda müsait gözetmen bulunamadı.",
+                "proposals": []
+            }
+            
+        return {
+            "success": True,
+            "message": f"Toplam {len(proposals)} adet (öğrenci ve derslik çakışması olmayan) güvenli sınav planı önerisi başarıyla oluşturuldu.",
+            "proposals": proposals
+        }

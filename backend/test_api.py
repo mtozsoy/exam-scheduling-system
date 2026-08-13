@@ -2,11 +2,11 @@ import urllib.request
 import json
 import urllib.error
 
-# First check if the existing valid exam is in there
+# Testing out of range date
 data = {
-  "course_code": "BMU402",
+  "course_code": "AIT210",
   "exam_type": "Vize",
-  "date": "2026-08-12",
+  "date": "2026-11-10",
   "start_time": "09:00",
   "duration_minutes": 90,
   "rooms": [

@@ -74,6 +74,7 @@ def confirm_proposal(
     validation_result = SchedulingService.validate_exam_schedule(
         db=db,
         course_code=request.course_code,
+        exam_type=request.exam_type,
         exam_date=request.date,
         start_time=request.start_time,
         duration_minutes=duration,

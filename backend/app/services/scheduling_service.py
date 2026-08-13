@@ -9,6 +9,7 @@ from app.models.exam_room import ExamRoom
 from app.models.invigilator import Invigilator
 from app.models.exam_invigilator import ExamInvigilator
 from app.models.room import Room
+from app.models.academic_calendar import AcademicCalendar
 
 class SchedulingService:
     @staticmethod
@@ -71,11 +72,26 @@ class SchedulingService:
     def validate_exam_schedule(
         db: Session,
         course_code: str,
+        exam_type: str,
         exam_date: date,
         start_time: time,
         duration_minutes: int,
         rooms_with_invigilators: list[dict]
     ) -> dict:
+        # 0. Akademik Takvim kontrolü
+        active_calendar = db.execute(
+            select(AcademicCalendar).where(
+                AcademicCalendar.is_active == True,
+                AcademicCalendar.exam_type == exam_type
+            )
+        ).scalars().first()
+
+        if not active_calendar:
+            return {"valid": False, "message": f"'{exam_type}' sınav türü için aktif bir akademik takvim bulunamadı."}
+            
+        if not (active_calendar.start_date <= exam_date <= active_calendar.end_date):
+            return {"valid": False, "message": f"Sınav tarihi akademik takvimde belirtilen {exam_type} sınav aralığı dışında."}
+
         # 1. Aynı course_code için zaten bir sınav kaydı var mı?
         existing_exam = db.execute(
             select(Exam).where(Exam.course_code == course_code)

@@ -1,0 +1,58 @@
+.scheduling-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  min-height: 100vh;
+  gap: 40px;
+}
+
+.wizard-container {
+  width: 100%;
+}
+
+.proposals-container {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  color: #fff;
+}
+
+.proposals-container h3 {
+  margin-top: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+
+.proposals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.simple-proposal-item {
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 4px solid #646cff;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.proposal-header {
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+}
+
+.proposal-rooms ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.proposal-rooms li {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}

@@ -2,16 +2,17 @@ import urllib.request
 import json
 import urllib.error
 
+# First check if the existing valid exam is in there
 data = {
-  "course_code": "string",
-  "exam_type": "string",
-  "date": "2026-08-11",
-  "start_time": "15:28:00",
-  "duration_minutes": 0,
+  "course_code": "BMU402",
+  "exam_type": "Vize",
+  "date": "2026-08-12",
+  "start_time": "09:00",
+  "duration_minutes": 90,
   "rooms": [
     {
-      "room_code": "string",
-      "invigilator_id": 0
+      "room_code": "A101",
+      "invigilator_id": 1
     }
   ]
 }

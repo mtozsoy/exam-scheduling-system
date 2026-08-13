@@ -4,9 +4,8 @@ from typing import List, Optional
 
 class SchedulingProposalRequest(BaseModel):
     course_code: str
+    exam_type: str
     duration_minutes: int
-    start_date: date
-    end_date: date
     daily_start_time: time
     daily_end_time: time
 

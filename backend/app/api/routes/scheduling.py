@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -10,6 +10,7 @@ from app.schemas.scheduling import (
 from app.models.exam import Exam
 from app.models.exam_room import ExamRoom
 from app.models.exam_invigilator import ExamInvigilator
+from app.models.academic_calendar import AcademicCalendar
 from app.services.scheduling_service import SchedulingService
 from app.services.room_service import RoomService
 
@@ -20,6 +21,21 @@ def generate_proposals(
     request: SchedulingProposalRequest, 
     db: Session = Depends(get_db)
 ):
+    # Akademik Takvim kontrolü
+    from sqlalchemy import select
+    active_calendar = db.execute(
+        select(AcademicCalendar).where(
+            AcademicCalendar.is_active == True,
+            AcademicCalendar.exam_type == request.exam_type
+        )
+    ).scalars().first()
+
+    if not active_calendar:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Aktif bir akademik takvim bulunamadı. Lütfen '{request.exam_type}' sınav türü için aktif bir takvim tanımlayın."
+        )
+
     room_service = RoomService()
     # Mevcut tüm derslikleri veritabanından çek (veya request'ten seçili olanları alabilirdik, şimdilik tümünü alıyoruz)
     available_rooms = room_service.get_all_rooms(db)
@@ -28,8 +44,8 @@ def generate_proposals(
         db=db,
         course_code=request.course_code,
         duration_minutes=request.duration_minutes,
-        start_date=request.start_date,
-        end_date=request.end_date,
+        start_date=active_calendar.start_date,
+        end_date=active_calendar.end_date,
         daily_start_time=request.daily_start_time,
         daily_end_time=request.daily_end_time,
         available_rooms=available_rooms
@@ -42,18 +58,32 @@ def confirm_proposal(
     request: SchedulingConfirmRequest,
     db: Session = Depends(get_db)
 ):
-    try:
-        # duration_minutes gönderilmemişse (proposal kopyalanmışsa) start_time ve end_time üzerinden hesapla
-        duration = request.duration_minutes
-        if duration is None:
-            if request.end_time:
-                import datetime
-                start_dt = datetime.datetime.combine(request.date, request.start_time)
-                end_dt = datetime.datetime.combine(request.date, request.end_time)
-                duration = int((end_dt - start_dt).total_seconds() / 60)
-            else:
-                duration = 90 # Fallback
+    # duration_minutes gönderilmemişse (proposal kopyalanmışsa) start_time ve end_time üzerinden hesapla
+    duration = request.duration_minutes
+    if duration is None:
+        if request.end_time:
+            import datetime
+            start_dt = datetime.datetime.combine(request.date, request.start_time)
+            end_dt = datetime.datetime.combine(request.date, request.end_time)
+            duration = int((end_dt - start_dt).total_seconds() / 60)
+        else:
+            duration = 90 # Fallback
 
+    # --- Güvenlik Kontrolleri ---
+    rooms_data = [{"room_code": r.room_code, "invigilator_id": r.invigilator_id} for r in request.rooms]
+    validation_result = SchedulingService.validate_exam_schedule(
+        db=db,
+        course_code=request.course_code,
+        exam_date=request.date,
+        start_time=request.start_time,
+        duration_minutes=duration,
+        rooms_with_invigilators=rooms_data
+    )
+    
+    if not validation_result["valid"]:
+        raise HTTPException(status_code=409, detail=validation_result["message"])
+
+    try:
         # 1. Ana Sınav (Exam) kaydını oluştur
         new_exam = Exam(
             course_code=request.course_code,

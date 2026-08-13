@@ -8,6 +8,7 @@ from app.models.student_course import StudentCourse
 from app.models.exam_room import ExamRoom
 from app.models.invigilator import Invigilator
 from app.models.exam_invigilator import ExamInvigilator
+from app.models.room import Room
 
 class SchedulingService:
     @staticmethod
@@ -65,6 +66,100 @@ class SchedulingService:
                             })
                             
         return conflicts
+
+    @staticmethod
+    def validate_exam_schedule(
+        db: Session,
+        course_code: str,
+        exam_date: date,
+        start_time: time,
+        duration_minutes: int,
+        rooms_with_invigilators: list[dict]
+    ) -> dict:
+        # 1. Aynı course_code için zaten bir sınav kaydı var mı?
+        existing_exam = db.execute(
+            select(Exam).where(Exam.course_code == course_code)
+        ).scalars().first()
+        if existing_exam:
+            return {"valid": False, "message": f"Bu ders ({course_code}) için zaten planlanmış bir sınav bulunmaktadır."}
+
+        target_start = datetime.combine(exam_date, start_time)
+        target_end = target_start + timedelta(minutes=duration_minutes)
+
+        # 2. Seçilen tarih/saatte öğrencilerin başka sınavlarıyla çakışma var mı?
+        enrollments = db.execute(select(StudentCourse)).scalars().all()
+        course_students_map = defaultdict(set)
+        for e in enrollments:
+            course_students_map[e.course_code].add(e.student_number)
+            
+        target_students = course_students_map.get(course_code, set())
+        
+        daily_exams = db.execute(
+            select(Exam).where(Exam.date == exam_date)
+        ).scalars().all()
+        
+        for exam in daily_exams:
+            if exam.course_code == course_code:
+                continue
+                
+            ex_start = datetime.combine(exam.date, exam.start_time)
+            ex_end = ex_start + timedelta(minutes=exam.duration_minutes)
+            
+            # Zaman kesişimi var mı?
+            if target_start < ex_end and ex_start < target_end:
+                exam_students = course_students_map.get(exam.course_code, set())
+                if target_students.intersection(exam_students):
+                    return {"valid": False, "message": f"Öğrenci çakışması tespit edildi. ({exam.course_code} sınavı ile ortak öğrenciler var)."}
+
+        # 3. Seçilen dersliklerden herhangi biri aynı zaman aralığında başka sınavda kullanılıyor mu?
+        requested_room_codes = [r["room_code"] for r in rooms_with_invigilators]
+        if requested_room_codes:
+            exam_rooms = db.execute(
+                select(ExamRoom, Exam)
+                .join(Exam, ExamRoom.exam_id == Exam.exam_id)
+                .where(Exam.date == exam_date)
+                .where(ExamRoom.room_code.in_(requested_room_codes))
+            ).all()
+            
+            for er, exam in exam_rooms:
+                if exam.course_code == course_code:
+                    continue
+                ex_start = datetime.combine(exam.date, exam.start_time)
+                ex_end = ex_start + timedelta(minutes=exam.duration_minutes)
+                if target_start < ex_end and ex_start < target_end:
+                    return {"valid": False, "message": f"Derslik çakışması! {er.room_code} numaralı derslik bu saatlerde başka bir sınava ({exam.course_code}) tahsis edilmiş."}
+
+        # 4. Atanan gözetmenlerden herhangi biri aynı zaman aralığında başka sınavda görevli mi?
+        requested_invigilator_ids = [r["invigilator_id"] for r in rooms_with_invigilators]
+        if requested_invigilator_ids:
+            exam_invigilators = db.execute(
+                select(ExamInvigilator, Exam)
+                .join(Exam, ExamInvigilator.exam_id == Exam.exam_id)
+                .where(Exam.date == exam_date)
+                .where(ExamInvigilator.invigilator_id.in_(requested_invigilator_ids))
+            ).all()
+            
+            for ei, exam in exam_invigilators:
+                if exam.course_code == course_code:
+                    continue
+                ex_start = datetime.combine(exam.date, exam.start_time)
+                ex_end = ex_start + timedelta(minutes=exam.duration_minutes)
+                if target_start < ex_end and ex_start < target_end:
+                    return {"valid": False, "message": f"Gözetmen çakışması! ID'si {ei.invigilator_id} olan gözetmen bu saatlerde başka bir sınavda ({exam.course_code}) görevli."}
+
+        # 5. Kullanılan dersliklerin toplam kapasitesi sınava girecek öğrenci sayısını karşılıyor mu?
+        total_students = len(target_students)
+        total_capacity = 0
+        if requested_room_codes:
+            rooms_info = db.execute(
+                select(Room).where(Room.room_code.in_(requested_room_codes))
+            ).scalars().all()
+            total_capacity = sum(r.capacity for r in rooms_info)
+            
+        if total_students > total_capacity:
+            return {"valid": False, "message": f"Kapasite yetersiz! Sınava girecek öğrenci sayısı ({total_students}), seçilen dersliklerin toplam kapasitesini ({total_capacity}) aşıyor."}
+
+        return {"valid": True, "message": "Tüm güvenlik kontrolleri başarılı."}
 
     @staticmethod
     def suggest_exam_time_slots(

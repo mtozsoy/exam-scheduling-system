@@ -1,11 +1,14 @@
-import React from 'react';
+
+import DashboardLayout from './layouts/DashboardLayout';
 import SchedulingPage from './pages/SchedulingPage';
 import './App.css';
 
 function App() {
   return (
     <div className="App">
-      <SchedulingPage />
+      <DashboardLayout>
+        <SchedulingPage />
+      </DashboardLayout>
     </div>
   );
 }

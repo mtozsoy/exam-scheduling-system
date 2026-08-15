@@ -1,0 +1,164 @@
+.proposal-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  color: var(--text-main);
+}
+
+.proposal-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+.proposal-card.confirmed {
+  border-color: var(--success);
+  background: #f1f8e9; /* Very light green */
+}
+
+.proposal-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+
+.datetime {
+  display: flex;
+  flex-direction: column;
+}
+
+.date {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.time {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.student-count {
+  background: #e3f2fd;
+  color: var(--secondary);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.proposal-card-body h4 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+.no-rooms-msg {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.room-item {
+  background: #f9f9f9;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--secondary);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.room-code {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.room-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.invigilator {
+  color: #e65100;
+  font-weight: 600;
+}
+
+.card-alert {
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.card-alert.error {
+  background: #ffebee;
+  border: 1px solid #ffcdd2;
+  color: var(--error);
+}
+
+.card-alert.success {
+  background: #e8f5e9;
+  border: 1px solid #c8e6c9;
+  color: var(--success);
+}
+
+.proposal-card-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.confirm-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.confirm-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.confirm-btn:disabled {
+  background: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+}
+
+.confirm-btn.success-btn:disabled {
+  background: var(--success);
+  color: #fff;
+}
+
+@media (max-width: 480px) {
+  .proposal-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

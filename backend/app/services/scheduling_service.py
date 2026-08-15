@@ -92,12 +92,15 @@ class SchedulingService:
         if not (active_calendar.start_date <= exam_date <= active_calendar.end_date):
             return {"valid": False, "message": f"Sınav tarihi akademik takvimde belirtilen {exam_type} sınav aralığı dışında."}
 
-        # 1. Aynı course_code için zaten bir sınav kaydı var mı?
+        # 1. Aynı course_code ve exam_type için zaten bir sınav kaydı var mı?
         existing_exam = db.execute(
-            select(Exam).where(Exam.course_code == course_code)
+            select(Exam).where(
+                Exam.course_code == course_code,
+                Exam.exam_type == exam_type
+            )
         ).scalars().first()
         if existing_exam:
-            return {"valid": False, "message": f"Bu ders ({course_code}) için zaten planlanmış bir sınav bulunmaktadır."}
+            return {"valid": False, "message": f"Bu ders ({course_code}) için zaten planlanmış bir {exam_type} sınavı bulunmaktadır."}
 
         target_start = datetime.combine(exam_date, start_time)
         target_end = target_start + timedelta(minutes=duration_minutes)

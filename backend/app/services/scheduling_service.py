@@ -359,10 +359,15 @@ class SchedulingService:
             if er.exam_id in exam_times:
                 room_busy_slots[er.room_code].append(exam_times[er.exam_id])
 
-        # Mevcut gözetmenlerin meşguliyetlerini çek
+        # Mevcut gözetmenlerin meşguliyetlerini ve iş yüklerini çek
         exam_invigilators = db.execute(select(ExamInvigilator)).scalars().all()
         invigilator_busy_slots = defaultdict(list)
+        invigilator_workload = defaultdict(int)
+        
         for ei in exam_invigilators:
+            # Gözetmenin tüm zamanlardaki toplam görev sayısını hesapla
+            invigilator_workload[ei.invigilator_id] += 1
+            # Sadece bu aralıktaki meşguliyet saatlerini tut
             if ei.exam_id in exam_times:
                 invigilator_busy_slots[ei.invigilator_id].append(exam_times[ei.exam_id])
                 
@@ -414,6 +419,9 @@ class SchedulingService:
                         
                 # Eğer yeterli sayıda müsait gözetmen varsa öneriyi kaydet
                 if len(free_invigilators) >= needed_invigilator_count:
+                    # Gözetmenleri adil dağılım için görev sayısına göre sırala (azdan çoğa)
+                    free_invigilators.sort(key=lambda inv: invigilator_workload[inv.invigilator_id])
+                    
                     assigned_invigilators = free_invigilators[:needed_invigilator_count]
                     
                     # Her dersliğe bir gözetmen ata

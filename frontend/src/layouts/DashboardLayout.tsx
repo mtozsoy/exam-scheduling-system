@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react';
+import type { PageView } from '../App';
 import './DashboardLayout.css';
 
 interface DashboardLayoutProps {
   children: ReactNode;
+  activePage: PageView;
+  onNavigate: (page: PageView) => void;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage, onNavigate }) => {
   return (
     <div className="dashboard-wrapper">
       {/* Sidebar */}
@@ -21,8 +24,24 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         <nav className="sidebar-nav">
           <ul>
             <li><a href="#" className="nav-item">Ana Sayfa</a></li>
-            <li><a href="#" className="nav-item active">Sınav Planlama</a></li>
-            <li><a href="#" className="nav-item">Sınavlar</a></li>
+            <li>
+              <a 
+                href="#" 
+                className={`nav-item ${activePage === 'scheduling' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); onNavigate('scheduling'); }}
+              >
+                Sınav Planlama
+              </a>
+            </li>
+            <li>
+              <a 
+                href="#" 
+                className={`nav-item ${activePage === 'exams' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); onNavigate('exams'); }}
+              >
+                Sınavlar
+              </a>
+            </li>
             <li><a href="#" className="nav-item">Derslikler</a></li>
             <li><a href="#" className="nav-item">Gözetmenler</a></li>
             <li><a href="#" className="nav-item">Dersler</a></li>
@@ -40,7 +59,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         {/* Top Navbar */}
         <header className="topbar">
           <div className="page-title">
-            <h3>Sınav Planlama</h3>
+            <h3>{activePage === 'scheduling' ? 'Sınav Planlama' : 'Sınavlar'}</h3>
           </div>
           <div className="user-profile">
             <div className="avatar">A</div>

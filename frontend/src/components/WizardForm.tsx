@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getCourses, getSchedulingProposals } from '../services/api';
+import { getCourses, getSchedulingProposals, getExams } from '../services/api';
 import type { Course, Proposal } from '../types/scheduling';
+import type { Exam } from '../types/exams';
 import './WizardForm.css';
 
 interface WizardFormProps {
@@ -9,7 +10,8 @@ interface WizardFormProps {
 
 const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived }) => {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [loadingCourses, setLoadingCourses] = useState<boolean>(true);
+  const [scheduledExams, setScheduledExams] = useState<Exam[]>([]);
+  const [loadingData, setLoadingData] = useState<boolean>(true);
   const [initError, setInitError] = useState<string | null>(null);
 
   const [courseCode, setCourseCode] = useState<string>('');
@@ -22,22 +24,49 @@ const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived }) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCourses = async () => {
+    const fetchData = async () => {
       try {
-        setLoadingCourses(true);
-        const data = await getCourses();
-        setCourses(data);
-        if (data.length > 0) {
-          setCourseCode(data[0].course_code);
+        setLoadingData(true);
+        const [coursesData, examsData] = await Promise.all([
+          getCourses(),
+          getExams()
+        ]);
+        
+        setCourses(coursesData);
+        setScheduledExams(examsData);
+        
+        if (coursesData.length > 0) {
+          setCourseCode(coursesData[0].course_code);
         }
       } catch (err: any) {
-        setInitError(err.message || 'Dersler yüklenirken bir hata oluştu.');
+        setInitError(err.message || 'Veriler yüklenirken bir hata oluştu.');
       } finally {
-        setLoadingCourses(false);
+        setLoadingData(false);
       }
     };
-    fetchCourses();
+    fetchData();
   }, []);
+
+  // Update selected course if the current one is now disabled due to examType change
+  useEffect(() => {
+    if (courses.length > 0) {
+      const isCurrentScheduled = scheduledExams.some(
+        e => e.course_code === courseCode && e.exam_type === examType
+      );
+      
+      if (isCurrentScheduled) {
+        // Find first available course
+        const firstAvailable = courses.find(
+          c => !scheduledExams.some(e => e.course_code === c.course_code && e.exam_type === examType)
+        );
+        if (firstAvailable) {
+          setCourseCode(firstAvailable.course_code);
+        } else {
+          setCourseCode(''); // No courses available
+        }
+      }
+    }
+  }, [examType, scheduledExams, courses, courseCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,8 +94,8 @@ const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived }) => {
     }
   };
 
-  if (loadingCourses) {
-    return <div className="wizard-card loading">Dersler Yükleniyor...</div>;
+  if (loadingData) {
+    return <div className="wizard-card loading">Veriler Yükleniyor...</div>;
   }
 
   if (initError) {
@@ -91,11 +120,14 @@ const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived }) => {
             onChange={(e) => setCourseCode(e.target.value)}
             required
           >
-            {courses.map(c => (
-              <option key={c.course_code} value={c.course_code}>
-                {c.course_code} - {c.course_name}
-              </option>
-            ))}
+            {courses.map(c => {
+              const isScheduled = scheduledExams.some(e => e.course_code === c.course_code && e.exam_type === examType);
+              return (
+                <option key={c.course_code} value={c.course_code} disabled={isScheduled}>
+                  {c.course_code} - {c.course_name} {isScheduled ? "(Planlandı)" : ""}
+                </option>
+              );
+            })}
           </select>
         </div>
 

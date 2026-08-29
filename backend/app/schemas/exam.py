@@ -12,3 +12,11 @@ class ExamResponse(BaseModel):
     duration_minutes: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ExamUpdateRequest(BaseModel):
+    exam_type: str
+    date: datetime.date
+    start_time: datetime.time
+    duration_minutes: int
+

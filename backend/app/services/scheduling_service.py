@@ -76,7 +76,8 @@ class SchedulingService:
         exam_date: date,
         start_time: time,
         duration_minutes: int,
-        rooms_with_invigilators: list[dict]
+        rooms_with_invigilators: list[dict],
+        exclude_exam_id: int | None = None
     ) -> dict:
         # 0. Akademik Takvim kontrolü
         active_calendar = db.execute(
@@ -93,12 +94,14 @@ class SchedulingService:
             return {"valid": False, "message": f"Sınav tarihi akademik takvimde belirtilen {exam_type} sınav aralığı dışında."}
 
         # 1. Aynı course_code ve exam_type için zaten bir sınav kaydı var mı?
-        existing_exam = db.execute(
-            select(Exam).where(
-                Exam.course_code == course_code,
-                Exam.exam_type == exam_type
-            )
-        ).scalars().first()
+        query = select(Exam).where(
+            Exam.course_code == course_code,
+            Exam.exam_type == exam_type
+        )
+        if exclude_exam_id is not None:
+            query = query.where(Exam.exam_id != exclude_exam_id)
+            
+        existing_exam = db.execute(query).scalars().first()
         if existing_exam:
             return {"valid": False, "message": f"Bu ders ({course_code}) için zaten planlanmış bir {exam_type} sınavı bulunmaktadır."}
 
@@ -119,6 +122,8 @@ class SchedulingService:
         
         for exam in daily_exams:
             if exam.course_code == course_code:
+                continue
+            if exclude_exam_id is not None and exam.exam_id == exclude_exam_id:
                 continue
                 
             ex_start = datetime.combine(exam.date, exam.start_time)
@@ -143,13 +148,15 @@ class SchedulingService:
             for er, exam in exam_rooms:
                 if exam.course_code == course_code:
                     continue
+                if exclude_exam_id is not None and exam.exam_id == exclude_exam_id:
+                    continue
                 ex_start = datetime.combine(exam.date, exam.start_time)
                 ex_end = ex_start + timedelta(minutes=exam.duration_minutes)
                 if target_start < ex_end and ex_start < target_end:
                     return {"valid": False, "message": f"Derslik çakışması! {er.room_code} numaralı derslik bu saatlerde başka bir sınava ({exam.course_code}) tahsis edilmiş."}
 
         # 4. Atanan gözetmenlerden herhangi biri aynı zaman aralığında başka sınavda görevli mi?
-        requested_invigilator_ids = [r["invigilator_id"] for r in rooms_with_invigilators]
+        requested_invigilator_ids = [r["invigilator_id"] for r in rooms_with_invigilators if r.get("invigilator_id")]
         if requested_invigilator_ids:
             exam_invigilators = db.execute(
                 select(ExamInvigilator, Exam)
@@ -160,6 +167,8 @@ class SchedulingService:
             
             for ei, exam in exam_invigilators:
                 if exam.course_code == course_code:
+                    continue
+                if exclude_exam_id is not None and exam.exam_id == exclude_exam_id:
                     continue
                 ex_start = datetime.combine(exam.date, exam.start_time)
                 ex_end = ex_start + timedelta(minutes=exam.duration_minutes)

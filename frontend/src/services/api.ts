@@ -5,6 +5,7 @@ import type {
   SchedulingConfirmRequest,
   SchedulingConfirmResponse,
 } from "../types/scheduling";
+import type { Exam, ExamUpdateData } from "../types/exams";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -77,3 +78,42 @@ export async function confirmScheduling(
     }
   );
 }
+
+/**
+ * Planlanmış tüm sınavları getirir.
+ */
+export async function getExams(): Promise<Exam[]> {
+  return fetchWithErrorHandling<Exam[]>(`${BASE_URL}/exams`);
+}
+
+/**
+ * Planlanmış bir sınavı günceller.
+ */
+export async function updateExam(
+  examId: number,
+  data: ExamUpdateData
+): Promise<Exam> {
+  return fetchWithErrorHandling<Exam>(
+    `${BASE_URL}/exams/${examId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Planlanmış bir sınavı siler.
+ */
+export async function deleteExam(examId: number): Promise<{ success: boolean; message: string }> {
+  return fetchWithErrorHandling<{ success: boolean; message: string }>(
+    `${BASE_URL}/exams/${examId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+

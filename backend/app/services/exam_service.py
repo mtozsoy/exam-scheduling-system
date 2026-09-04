@@ -76,6 +76,8 @@ class ExamService:
             
         try:
             # Bağımlı kayıtları temizle (Eğer veritabanında ON DELETE CASCADE yoksa manuel silmek güvenlidir)
+            from app.models.student_exam_room import StudentExamRoom
+            db.execute(delete(StudentExamRoom).where(StudentExamRoom.exam_id == exam_id))
             db.execute(delete(ExamRoom).where(ExamRoom.exam_id == exam_id))
             db.execute(delete(ExamInvigilator).where(ExamInvigilator.exam_id == exam_id))
             # Sınavı sil

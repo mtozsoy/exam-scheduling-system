@@ -20,3 +20,8 @@ class ExamUpdateRequest(BaseModel):
     start_time: datetime.time
     duration_minutes: int
 
+
+class StudentExamRoomResponse(BaseModel):
+    room_code: str
+    students: list[int]
+

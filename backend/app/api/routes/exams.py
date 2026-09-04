@@ -35,3 +35,33 @@ def get_exam_rooms(exam_id: int, db: Session = Depends(get_db)):
 @router.get("/exams/{exam_id}/invigilators", response_model=list[InvigilatorResponse])
 def get_exam_invigilators(exam_id: int, db: Session = Depends(get_db)):
     return ExamInvigilatorService.get_invigilators_for_exam(db, exam_id)
+
+
+from app.schemas.exam import StudentExamRoomResponse
+
+@router.get("/exams/{exam_id}/distributions", response_model=list[StudentExamRoomResponse])
+def get_exam_distributions(exam_id: int, db: Session = Depends(get_db)):
+    from app.models.student_exam_room import StudentExamRoom
+    from sqlalchemy import select
+    
+    # 1. Fetch all student-room mappings for the exam
+    records = db.execute(
+        select(StudentExamRoom).where(StudentExamRoom.exam_id == exam_id)
+    ).scalars().all()
+    
+    # 2. Group by room_code
+    distributions_map = {}
+    for record in records:
+        if record.room_code not in distributions_map:
+            distributions_map[record.room_code] = []
+        distributions_map[record.room_code].append(record.student_number)
+        
+    # 3. Format response
+    response = []
+    for room_code, students in distributions_map.items():
+        response.append(StudentExamRoomResponse(
+            room_code=room_code,
+            students=students
+        ))
+        
+    return response

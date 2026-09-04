@@ -5,7 +5,7 @@ import type {
   SchedulingConfirmRequest,
   SchedulingConfirmResponse,
 } from "../types/scheduling";
-import type { Exam, ExamUpdateData } from "../types/exams";
+import type { Exam, ExamUpdateData, StudentExamRoomResponse } from "../types/exams";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -115,5 +115,12 @@ export async function deleteExam(examId: number): Promise<{ success: boolean; me
       method: "DELETE",
     }
   );
+}
+
+/**
+ * Sınavın öğrenci-derslik dağılımını getirir.
+ */
+export async function getExamDistributions(examId: number): Promise<StudentExamRoomResponse[]> {
+  return fetchWithErrorHandling<StudentExamRoomResponse[]>(`${BASE_URL}/exams/${examId}/distributions`);
 }
 

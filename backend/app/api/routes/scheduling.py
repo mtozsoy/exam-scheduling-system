@@ -99,6 +99,37 @@ def confirm_proposal(
         exam_id = new_exam.exam_id
         
         # 2. Derslik ve Gözetmen atamalarını ilgili tablolara (ExamRoom ve ExamInvigilator) kaydet
+        # Öğrenci - Derslik dağılımını backend'de güvenilir şekilde hesapla
+        from app.models.student_exam_room import StudentExamRoom
+        from app.models.room import Room
+        from app.models.student_course import StudentCourse
+        
+        distributions_map = {}
+        
+        # Sadece seçilen odaların Room objelerini çek
+        selected_room_codes = [r.room_code for r in request.rooms]
+        from sqlalchemy import select
+        selected_rooms = db.execute(
+            select(Room).where(Room.room_code.in_(selected_room_codes))
+        ).scalars().all()
+        
+        # Dersi alan öğrencilerin doğrulanması ve kapasite kontrolü distribute_students_to_rooms içinde yapılıyor
+        dist_result = SchedulingService.distribute_students_to_rooms(
+            db=db,
+            course_code=request.course_code,
+            available_rooms=selected_rooms
+        )
+        
+        if dist_result.get("success"):
+            for d in dist_result.get("distributions", []):
+                distributions_map[d["room_code"]] = d["students"]
+        else:
+            db.rollback()
+            return SchedulingConfirmResponse(
+                success=False,
+                message=f"Öğrenci dağıtımı yapılamadı: {dist_result.get('message', 'Kapasite yetersiz.')}"
+            )
+
         for room_assignment in request.rooms:
             # Derslik (ExamRoom)
             new_room = ExamRoom(
@@ -113,6 +144,16 @@ def confirm_proposal(
                 invigilator_id=room_assignment.invigilator_id
             )
             db.add(new_invigilator)
+            
+            # Öğrenci - Derslik Eşleştirmesi (StudentExamRoom)
+            students = distributions_map.get(room_assignment.room_code, [])
+            for student_no in students:
+                new_student_room = StudentExamRoom(
+                    exam_id=exam_id,
+                    room_code=room_assignment.room_code,
+                    student_number=student_no
+                )
+                db.add(new_student_room)
             
         # 3. Tüm işlemler başarılıysa tek bir transaction içinde onayla (Commit)
         db.commit()

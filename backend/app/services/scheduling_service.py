@@ -261,7 +261,9 @@ class SchedulingService:
     ) -> dict:
         # 1. İlgili dersi alan öğrencilerin numaralarını bul
         enrollments = db.execute(
-            select(StudentCourse.student_number).where(StudentCourse.course_code == course_code)
+            select(StudentCourse.student_number)
+            .where(StudentCourse.course_code == course_code)
+            .order_by(StudentCourse.student_number)
         ).scalars().all()
         
         students = list(enrollments)
@@ -280,6 +282,9 @@ class SchedulingService:
                 "missing_capacity": total_students - total_capacity,
                 "distributions": []
             }
+            
+        # Deterministik dağılım için derslikleri koda göre sırala
+        available_rooms = sorted(available_rooms, key=lambda r: r.room_code)
             
         # 4. Öğrencileri kapasiteyi aşmadan dersliklere (odaklara) bölüştür
         distributions = []

@@ -13,3 +13,8 @@ export interface ExamUpdateData {
   start_time: string;
   duration_minutes: number;
 }
+
+export interface StudentExamRoomResponse {
+  room_code: string;
+  students: number[];
+}

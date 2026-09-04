@@ -329,3 +329,63 @@
   font-weight: 500;
   border: 1px solid #fad2cf;
 }
+
+.distributions-section {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.distributions-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: var(--text-color);
+}
+
+.distributions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.distribution-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.distribution-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.dist-room-code {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.dist-student-count {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.distribution-students {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  max-height: 80px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.distribution-students::-webkit-scrollbar {
+  width: 4px;
+}
+
+.distribution-students::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}

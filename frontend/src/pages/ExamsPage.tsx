@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getExams, getCourses, updateExam, deleteExam } from '../services/api';
-import type { Exam, ExamUpdateData } from '../types/exams';
+import { getExams, getCourses, updateExam, deleteExam, getExamDistributions } from '../services/api';
+import type { Exam, ExamUpdateData, StudentExamRoomResponse } from '../types/exams';
 import type { Course } from '../types/scheduling';
 import './ExamsPage.css';
 
@@ -25,6 +25,10 @@ const ExamsPage: React.FC = () => {
     duration_minutes: 0,
   });
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+
+  // Distribution State
+  const [distributions, setDistributions] = useState<StudentExamRoomResponse[]>([]);
+  const [loadingDistributions, setLoadingDistributions] = useState<boolean>(false);
 
   useEffect(() => {
     fetchExams();
@@ -96,11 +100,22 @@ const ExamsPage: React.FC = () => {
     setError(null);
   };
 
-  const openDetailModal = (exam: Exam) => {
+  const openDetailModal = async (exam: Exam) => {
     setSelectedExam(exam);
     setIsEditing(false);
     setSuccessMsg(null);
     setError(null);
+
+    try {
+      setLoadingDistributions(true);
+      setDistributions([]);
+      const distData = await getExamDistributions(exam.exam_id);
+      setDistributions(distData);
+    } catch (err: any) {
+      console.error("Dağılımlar yüklenemedi", err);
+    } finally {
+      setLoadingDistributions(false);
+    }
   };
 
   const handleUpdate = async () => {
@@ -292,6 +307,29 @@ const ExamsPage: React.FC = () => {
                   <div className="detail-row">
                     <span className="detail-label">Süre:</span>
                     <span className="detail-value">{selectedExam.duration_minutes} dk</span>
+                  </div>
+
+                  <div className="distributions-section">
+                    <h4 className="distributions-title">Öğrenci Dağılımı</h4>
+                    {loadingDistributions ? (
+                      <p className="distributions-loading">Yükleniyor...</p>
+                    ) : distributions.length > 0 ? (
+                      <div className="distributions-list">
+                        {distributions.map(dist => (
+                          <div key={dist.room_code} className="distribution-card">
+                            <div className="distribution-header">
+                              <span className="dist-room-code">{dist.room_code}</span> 
+                              <span className="dist-student-count">({dist.students.length} Öğrenci)</span>
+                            </div>
+                            <div className="distribution-students">
+                              {dist.students.join(", ")}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="distributions-empty">Bu sınav için öğrenci dağılımı bulunamadı.</p>
+                    )}
                   </div>
                 </>
               )}

@@ -42,7 +42,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage,
                 Sınavlar
               </a>
             </li>
-            <li><a href="#" className="nav-item">Derslikler</a></li>
+            <li>
+              <a 
+                href="#" 
+                className={`nav-item ${activePage === 'rooms' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); onNavigate('rooms'); }}
+              >
+                Derslikler
+              </a>
+            </li>
             <li><a href="#" className="nav-item">Gözetmenler</a></li>
             <li><a href="#" className="nav-item">Dersler</a></li>
             <li><a href="#" className="nav-item">Akademik Takvim</a></li>
@@ -59,7 +67,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage,
         {/* Top Navbar */}
         <header className="topbar">
           <div className="page-title">
-            <h3>{activePage === 'scheduling' ? 'Sınav Planlama' : 'Sınavlar'}</h3>
+            <h3>
+              {activePage === 'scheduling' ? 'Sınav Planlama' : 
+               activePage === 'exams' ? 'Sınavlar' : 
+               activePage === 'rooms' ? 'Derslikler' : 'Sayfa'}
+            </h3>
           </div>
           <div className="user-profile">
             <div className="avatar">A</div>

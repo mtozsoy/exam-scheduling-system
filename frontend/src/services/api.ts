@@ -6,6 +6,7 @@ import type {
   SchedulingConfirmResponse,
 } from "../types/scheduling";
 import type { Exam, ExamUpdateData, StudentExamRoomResponse } from "../types/exams";
+import type { Room, RoomCreateData, RoomUpdateData } from "../types/rooms";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -124,3 +125,56 @@ export async function getExamDistributions(examId: number): Promise<StudentExamR
   return fetchWithErrorHandling<StudentExamRoomResponse[]>(`${BASE_URL}/exams/${examId}/distributions`);
 }
 
+/**
+ * Sistemdeki tüm derslikleri (Rooms) getirir.
+ */
+export async function getRooms(): Promise<Room[]> {
+  return fetchWithErrorHandling<Room[]>(`${BASE_URL}/rooms`);
+}
+
+/**
+ * Yeni bir derslik oluşturur.
+ */
+export async function createRoom(data: RoomCreateData): Promise<Room> {
+  return fetchWithErrorHandling<Room>(
+    `${BASE_URL}/rooms`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Mevcut bir dersliği günceller.
+ */
+export async function updateRoom(
+  roomCode: string,
+  data: RoomUpdateData
+): Promise<Room> {
+  return fetchWithErrorHandling<Room>(
+    `${BASE_URL}/rooms/${roomCode}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Bir dersliği siler.
+ */
+export async function deleteRoom(roomCode: string): Promise<{ success: boolean; message: string }> {
+  return fetchWithErrorHandling<{ success: boolean; message: string }>(
+    `${BASE_URL}/rooms/${roomCode}`,
+    {
+      method: "DELETE",
+    }
+  );
+}

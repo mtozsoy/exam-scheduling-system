@@ -7,6 +7,8 @@ import type {
 } from "../types/scheduling";
 import type { Exam, ExamUpdateData, StudentExamRoomResponse } from "../types/exams";
 import type { Room, RoomCreateData, RoomUpdateData } from "../types/rooms";
+import type { Invigilator, InvigilatorCreateData, InvigilatorUpdateData } from "../types/invigilators";
+
 
 const BASE_URL = "http://localhost:8000";
 
@@ -173,6 +175,60 @@ export async function updateRoom(
 export async function deleteRoom(roomCode: string): Promise<{ success: boolean; message: string }> {
   return fetchWithErrorHandling<{ success: boolean; message: string }>(
     `${BASE_URL}/rooms/${roomCode}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+/**
+ * Sistemdeki tüm gözetmenleri (Invigilators) getirir.
+ */
+export async function getInvigilators(): Promise<Invigilator[]> {
+  return fetchWithErrorHandling<Invigilator[]>(`${BASE_URL}/invigilators`);
+}
+
+/**
+ * Yeni bir gözetmen oluşturur.
+ */
+export async function createInvigilator(data: InvigilatorCreateData): Promise<Invigilator> {
+  return fetchWithErrorHandling<Invigilator>(
+    `${BASE_URL}/invigilators`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Mevcut bir gözetmeni günceller.
+ */
+export async function updateInvigilator(
+  invigilatorId: number,
+  data: InvigilatorUpdateData
+): Promise<Invigilator> {
+  return fetchWithErrorHandling<Invigilator>(
+    `${BASE_URL}/invigilators/${invigilatorId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Bir gözetmeni siler.
+ */
+export async function deleteInvigilator(invigilatorId: number): Promise<{ success: boolean; message: string }> {
+  return fetchWithErrorHandling<{ success: boolean; message: string }>(
+    `${BASE_URL}/invigilators/${invigilatorId}`,
     {
       method: "DELETE",
     }

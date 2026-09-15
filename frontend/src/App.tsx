@@ -3,9 +3,10 @@ import DashboardLayout from './layouts/DashboardLayout';
 import SchedulingPage from './pages/SchedulingPage';
 import ExamsPage from './pages/ExamsPage';
 import RoomsPage from './pages/RoomsPage';
+import InvigilatorsPage from './pages/InvigilatorsPage';
 import './App.css';
 
-export type PageView = 'scheduling' | 'exams' | 'rooms';
+export type PageView = 'scheduling' | 'exams' | 'rooms' | 'invigilators';
 
 function App() {
   const [activePage, setActivePage] = useState<PageView>('scheduling');
@@ -16,6 +17,7 @@ function App() {
         {activePage === 'scheduling' && <SchedulingPage />}
         {activePage === 'exams' && <ExamsPage />}
         {activePage === 'rooms' && <RoomsPage />}
+        {activePage === 'invigilators' && <InvigilatorsPage />}
       </DashboardLayout>
     </div>
   );

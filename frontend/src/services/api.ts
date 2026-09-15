@@ -47,6 +47,62 @@ export async function getCourses(): Promise<Course[]> {
 }
 
 /**
+ * Yeni bir ders oluşturur.
+ */
+export async function createCourse(data: {
+  course_code: string;
+  course_name: string;
+  term: number;
+  semester: number;
+}): Promise<Course> {
+  return fetchWithErrorHandling<Course>(
+    `${BASE_URL}/courses`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Mevcut bir dersi günceller.
+ */
+export async function updateCourse(
+  courseCode: string,
+  data: {
+    course_name?: string;
+    term?: number;
+    semester?: number;
+  }
+): Promise<Course> {
+  return fetchWithErrorHandling<Course>(
+    `${BASE_URL}/courses/${courseCode}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Bir dersi siler.
+ */
+export async function deleteCourse(courseCode: string): Promise<{ success: boolean; message: string }> {
+  return fetchWithErrorHandling<{ success: boolean; message: string }>(
+    `${BASE_URL}/courses/${courseCode}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+/**
  * Verilen kriterlere ve akademik takvime göre sınav planı önerileri üretir.
  */
 export async function getSchedulingProposals(

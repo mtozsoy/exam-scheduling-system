@@ -8,3 +8,15 @@ class CourseResponse(BaseModel):
     course_name: str
     term: int
     semester: int
+
+class CourseCreate(BaseModel):
+    course_code: str
+    course_name: str
+    term: int
+    semester: int
+
+class CourseUpdate(BaseModel):
+    course_name: str | None = None
+    term: int | None = None
+    semester: int | None = None
+

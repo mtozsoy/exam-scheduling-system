@@ -10,6 +10,7 @@ from app.models.invigilator import Invigilator
 from app.models.exam_invigilator import ExamInvigilator
 from app.models.room import Room
 from app.models.academic_calendar import AcademicCalendar
+from app.core.config import STUDENT_EXAM_BUFFER_MINUTES
 
 class SchedulingService:
     @staticmethod
@@ -46,9 +47,9 @@ class SchedulingService:
                     start2 = datetime.combine(date, exam2.start_time)
                     end2 = start2 + timedelta(minutes=exam2.duration_minutes)
                     
-                    # Saatlerin gerçekten kesişip kesişmediğini kontrol et
-                    # Kesişme şartı: 1. sınavın başlangıcı 2.nin bitişinden önce VE 2.nin başlangıcı 1.nin bitişinden önce olmalı
-                    if start1 < end2 and start2 < end1:
+                    # Zaman kesişimi var mı? (Öğrenci buffer'ı dahil)
+                    buffer_delta = timedelta(minutes=STUDENT_EXAM_BUFFER_MINUTES)
+                    if (start1 < (end2 + buffer_delta)) and (start2 < (end1 + buffer_delta)):
                         
                         # 4. Kesişen bu iki sınavın derslerini (course_code) alan ortak öğrencileri bul (Kesişim Kümesi)
                         students1 = course_students[exam1.course_code]
@@ -129,14 +130,15 @@ class SchedulingService:
             ex_start = datetime.combine(exam.date, exam.start_time)
             ex_end = ex_start + timedelta(minutes=exam.duration_minutes)
             
-            # Zaman kesişimi var mı?
-            if target_start < ex_end and ex_start < target_end:
+            # Zaman kesişimi var mı? (Öğrenci buffer'ı dahil)
+            buffer_delta = timedelta(minutes=STUDENT_EXAM_BUFFER_MINUTES)
+            if (target_start < (ex_end + buffer_delta)) and (ex_start < (target_end + buffer_delta)):
                 exam_students = course_students_map.get(exam.course_code, set())
                 if target_students.intersection(exam_students):
                     return {"valid": False, "message": f"Öğrenci çakışması tespit edildi. ({exam.course_code} sınavı ile ortak öğrenciler var)."}
 
         # 3. Seçilen dersliklerden herhangi biri aynı zaman aralığında başka sınavda kullanılıyor mu?
-        requested_room_codes = [r["room_code"] for r in rooms_with_invigilators]
+        requested_room_codes = [r["room_code"] for r in rooms_with_invigilators if r.get("room_code")]
         if requested_room_codes:
             exam_rooms = db.execute(
                 select(ExamRoom, Exam)
@@ -146,8 +148,6 @@ class SchedulingService:
             ).all()
             
             for er, exam in exam_rooms:
-                if exam.course_code == course_code:
-                    continue
                 if exclude_exam_id is not None and exam.exam_id == exclude_exam_id:
                     continue
                 ex_start = datetime.combine(exam.date, exam.start_time)
@@ -166,8 +166,6 @@ class SchedulingService:
             ).all()
             
             for ei, exam in exam_invigilators:
-                if exam.course_code == course_code:
-                    continue
                 if exclude_exam_id is not None and exam.exam_id == exclude_exam_id:
                     continue
                 ex_start = datetime.combine(exam.date, exam.start_time)
@@ -219,7 +217,9 @@ class SchedulingService:
             if target_students.intersection(exam_students):
                 exam_start_dt = datetime.combine(exam.date, exam.start_time)
                 exam_end_dt = exam_start_dt + timedelta(minutes=exam.duration_minutes)
-                blocked_slots[exam.date].append((exam_start_dt, exam_end_dt))
+                # Öğrenciler için olan buffer'ı bloke süresine ekle
+                buffer_delta = timedelta(minutes=STUDENT_EXAM_BUFFER_MINUTES)
+                blocked_slots[exam.date].append((exam_start_dt - buffer_delta, exam_end_dt + buffer_delta))
                 
         # 4. 30 dakikalık periyotlarla olası tüm zaman slotlarını dene
         available_slots = []
@@ -381,6 +381,7 @@ class SchedulingService:
 
         # 3. Her bir güvenli zaman dilimi için derslik kapasitelerini dinamik olarak test et
         proposals = []
+        failure_reasons = []
         for slot in available_slots:
             slot_start = datetime.fromisoformat(f"{slot['date']}T{slot['start_time']}")
             slot_end = datetime.fromisoformat(f"{slot['date']}T{slot['end_time']}")
@@ -406,45 +407,51 @@ class SchedulingService:
             )
             
             # Eğer derslik kapasitesi yeterliyse Gözetmen kontrolüne geç
-            if distribution_result.get("success"):
-                distributions = distribution_result["distributions"]
-                needed_invigilator_count = len(distributions)
+            if not distribution_result.get("success"):
+                failure_reasons.append(f"{slot['date']} {slot['start_time']}: {distribution_result.get('message')}")
+                continue
                 
-                # Bu saatte müsait olan gözetmenleri filtrele
-                free_invigilators = []
-                for inv in all_invigilators:
-                    is_inv_busy = False
-                    for busy_start, busy_end in invigilator_busy_slots[inv.invigilator_id]:
-                        if slot_start < busy_end and busy_start < slot_end:
-                            is_inv_busy = True
-                            break
+            distributions = distribution_result["distributions"]
+            needed_invigilator_count = len(distributions)
+                
+            # Bu saatte müsait olan gözetmenleri filtrele
+            free_invigilators = []
+            for inv in all_invigilators:
+                is_inv_busy = False
+                for busy_start, busy_end in invigilator_busy_slots[inv.invigilator_id]:
+                    if slot_start < busy_end and busy_start < slot_end:
+                        is_inv_busy = True
+                        break
+                
+                if not is_inv_busy:
+                    free_invigilators.append(inv)
                     
-                    if not is_inv_busy:
-                        free_invigilators.append(inv)
-                        
-                # Eğer yeterli sayıda müsait gözetmen varsa öneriyi kaydet
-                if len(free_invigilators) >= needed_invigilator_count:
-                    # Gözetmenleri adil dağılım için görev sayısına göre sırala (azdan çoğa)
-                    free_invigilators.sort(key=lambda inv: invigilator_workload[inv.invigilator_id])
+            # Eğer yeterli sayıda müsait gözetmen varsa öneriyi kaydet
+            if len(free_invigilators) >= needed_invigilator_count:
+                # Gözetmenleri adil dağılım için görev sayısına göre sırala (azdan çoğa)
+                free_invigilators.sort(key=lambda inv: invigilator_workload[inv.invigilator_id])
+                
+                assigned_invigilators = free_invigilators[:needed_invigilator_count]
+                
+                # Her dersliğe bir gözetmen ata
+                for i, dist in enumerate(distributions):
+                    dist["invigilator_id"] = assigned_invigilators[i].invigilator_id
                     
-                    assigned_invigilators = free_invigilators[:needed_invigilator_count]
-                    
-                    # Her dersliğe bir gözetmen ata
-                    for i, dist in enumerate(distributions):
-                        dist["invigilator_id"] = assigned_invigilators[i].invigilator_id
-                        
-                    proposals.append({
-                        "date": slot["date"],
-                        "start_time": slot["start_time"],
-                        "end_time": slot["end_time"],
-                        "total_students": distribution_result["total_students"],
-                        "rooms": distributions
-                    })
+                proposals.append({
+                    "date": slot["date"],
+                    "start_time": slot["start_time"],
+                    "end_time": slot["end_time"],
+                    "total_students": distribution_result["total_students"],
+                    "rooms": distributions
+                })
+            else:
+                failure_reasons.append(f"{slot['date']} {slot['start_time']}: Yeterli gözetmen yok (Gereken: {needed_invigilator_count}, Müsait: {len(free_invigilators)})")
                 
         if not proposals:
+            reason_text = " | ".join(failure_reasons[:3]) + ("..." if len(failure_reasons) > 3 else "")
             return {
                 "success": False,
-                "message": "Öğrenci çakışması olmayan zamanlar bulundu ancak o saatlerde boş derslik veya yeterli sayıda müsait gözetmen bulunamadı.",
+                "message": f"Öğrenci çakışması olmayan zamanlar bulundu ancak kaynak yetersizliği var: {reason_text}",
                 "proposals": []
             }
             

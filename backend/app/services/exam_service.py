@@ -26,14 +26,13 @@ class ExamService:
         exam_invigs = db.execute(select(ExamInvigilator).where(ExamInvigilator.exam_id == exam_id)).scalars().all()
         
         # SchedulingService'in beklentisi: list[dict] {"room_code": "...", "invigilator_id": ...}
-        # Mevcut atamaları olduğu gibi dictionary listesine çeviriyoruz.
-        # Varsayım: Oda sayısı ile gözetmen sayısı eşittir veya sırayla eşleşir.
+        # Oda sayısı ve gözetmen sayısı eşit olmayabilir. Hiçbir veriyi kaybetmemek için zip_longest kullanıyoruz.
+        from itertools import zip_longest
         rooms_with_invigilators = []
-        for i, room in enumerate(exam_rooms):
-            inv_id = exam_invigs[i].invigilator_id if i < len(exam_invigs) else None
+        for room, invig in zip_longest(exam_rooms, exam_invigs):
             rooms_with_invigilators.append({
-                "room_code": room.room_code,
-                "invigilator_id": inv_id
+                "room_code": room.room_code if room else None,
+                "invigilator_id": invig.invigilator_id if invig else None
             })
 
         # 3. Validation yap (kendi exam_id'mizi hariç tutarak)

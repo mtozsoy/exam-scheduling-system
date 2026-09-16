@@ -8,6 +8,7 @@ from app.api.routes.invigilators import router as invigilators_router
 from app.api.routes.exams import router as exams_router
 from app.api.routes.rooms import router as rooms_router
 from app.api.routes.scheduling import router as scheduling_router
+from app.api.routes.academic_calendars import router as academic_calendars_router
 
 app = FastAPI()
 
@@ -25,4 +26,5 @@ app.include_router(teachers_router)
 app.include_router(invigilators_router)
 app.include_router(exams_router)
 app.include_router(rooms_router)
+app.include_router(academic_calendars_router)
 app.include_router(scheduling_router)

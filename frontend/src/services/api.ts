@@ -8,6 +8,11 @@ import type {
 import type { Exam, ExamUpdateData, StudentExamRoomResponse } from "../types/exams";
 import type { Room, RoomCreateData, RoomUpdateData } from "../types/rooms";
 import type { Invigilator, InvigilatorCreateData, InvigilatorUpdateData } from "../types/invigilators";
+import type { 
+  AcademicCalendar, 
+  AcademicCalendarCreateData, 
+  AcademicCalendarUpdateData 
+} from "../types/academic_calendars";
 
 
 const BASE_URL = "http://localhost:8000";
@@ -285,6 +290,67 @@ export async function updateInvigilator(
 export async function deleteInvigilator(invigilatorId: number): Promise<{ success: boolean; message: string }> {
   return fetchWithErrorHandling<{ success: boolean; message: string }>(
     `${BASE_URL}/invigilators/${invigilatorId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+/**
+ * Sistemdeki tüm akademik takvimleri getirir.
+ */
+export async function getAcademicCalendars(): Promise<AcademicCalendar[]> {
+  return fetchWithErrorHandling<AcademicCalendar[]>(`${BASE_URL}/academic-calendars`);
+}
+
+/**
+ * Aktif olan akademik takvimleri getirir.
+ */
+export async function getActiveAcademicCalendars(): Promise<AcademicCalendar[]> {
+  return fetchWithErrorHandling<AcademicCalendar[]>(`${BASE_URL}/academic-calendars/active`);
+}
+
+/**
+ * Yeni bir akademik takvim oluşturur.
+ */
+export async function createAcademicCalendar(data: AcademicCalendarCreateData): Promise<AcademicCalendar> {
+  return fetchWithErrorHandling<AcademicCalendar>(
+    `${BASE_URL}/academic-calendars`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Mevcut bir akademik takvimi günceller.
+ */
+export async function updateAcademicCalendar(
+  calendarId: number,
+  data: AcademicCalendarUpdateData
+): Promise<AcademicCalendar> {
+  return fetchWithErrorHandling<AcademicCalendar>(
+    `${BASE_URL}/academic-calendars/${calendarId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Bir akademik takvimi siler.
+ */
+export async function deleteAcademicCalendar(calendarId: number): Promise<{ success: boolean; message: string }> {
+  return fetchWithErrorHandling<{ success: boolean; message: string }>(
+    `${BASE_URL}/academic-calendars/${calendarId}`,
     {
       method: "DELETE",
     }

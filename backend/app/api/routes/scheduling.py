@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.db.database import get_db
 from app.schemas.scheduling import (
@@ -11,6 +12,10 @@ from app.models.exam import Exam
 from app.models.exam_room import ExamRoom
 from app.models.exam_invigilator import ExamInvigilator
 from app.models.academic_calendar import AcademicCalendar
+from app.models.room import Room
+from app.models.invigilator import Invigilator
+from app.models.student_exam_room import StudentExamRoom
+from app.models.student_course import StudentCourse
 from app.services.scheduling_service import SchedulingService
 from app.services.room_service import RoomService
 
@@ -22,7 +27,6 @@ def generate_proposals(
     db: Session = Depends(get_db)
 ):
     # Akademik Takvim kontrolü
-    from sqlalchemy import select
     active_calendar = db.execute(
         select(AcademicCalendar).where(
             AcademicCalendar.is_active == True,
@@ -67,24 +71,42 @@ def confirm_proposal(
             end_dt = datetime.datetime.combine(request.date, request.end_time)
             duration = int((end_dt - start_dt).total_seconds() / 60)
         else:
-            duration = 90 # Fallback
-
-    # --- Güvenlik Kontrolleri ---
-    rooms_data = [{"room_code": r.room_code, "invigilator_id": r.invigilator_id} for r in request.rooms]
-    validation_result = SchedulingService.validate_exam_schedule(
-        db=db,
-        course_code=request.course_code,
-        exam_type=request.exam_type,
-        exam_date=request.date,
-        start_time=request.start_time,
-        duration_minutes=duration,
-        rooms_with_invigilators=rooms_data
-    )
-    
-    if not validation_result["valid"]:
-        raise HTTPException(status_code=409, detail=validation_result["message"])
-
+            raise HTTPException(
+                status_code=400,
+                detail="Sınav süresi (duration_minutes) veya bitiş saati (end_time) belirtilmelidir."
+            )
+            
     try:
+        # Race Condition Önlemi: Seçilen derslikleri ve gözetmenleri FOR UPDATE (Exclusive Lock) ile kilitle
+        # Bu işlem SQL Server üzerinde UPDLOCK/ROWLOCK atarak, onay işlemi bitene kadar başka 
+        # bir kullanıcının aynı kaynakları okuyup rezerve etmesini (Phantom Read / Concurrent Modification) engeller.
+        selected_room_codes = sorted([r.room_code for r in request.rooms])
+        if selected_room_codes:
+            print(f"[THREAD] Requesting locks for rooms: {selected_room_codes}")
+            db.execute(select(Room).where(Room.room_code.in_(selected_room_codes)).with_hint(Room, 'WITH (UPDLOCK, ROWLOCK)')).scalars().all()
+            print(f"[THREAD] Acquired locks for rooms: {selected_room_codes}")
+            
+        selected_invig_ids = sorted([r.invigilator_id for r in request.rooms if r.invigilator_id is not None])
+        if selected_invig_ids:
+            db.execute(select(Invigilator).where(Invigilator.invigilator_id.in_(selected_invig_ids)).with_hint(Invigilator, 'WITH (UPDLOCK, ROWLOCK)')).scalars().all()
+            
+        # --- Güvenlik Kontrolleri ---
+        rooms_data = [{"room_code": r.room_code, "invigilator_id": r.invigilator_id} for r in request.rooms]
+        print(f"[THREAD] Validating schedule for {request.course_code}")
+        validation_result = SchedulingService.validate_exam_schedule(
+            db=db,
+            course_code=request.course_code,
+            exam_type=request.exam_type,
+            exam_date=request.date,
+            start_time=request.start_time,
+            duration_minutes=duration,
+            rooms_with_invigilators=rooms_data
+        )
+        print(f"[THREAD] Validation result: {validation_result['valid']}")
+        
+        if not validation_result["valid"]:
+            raise HTTPException(status_code=409, detail=validation_result["message"])
+
         # 1. Ana Sınav (Exam) kaydını oluştur
         new_exam = Exam(
             course_code=request.course_code,
@@ -99,16 +121,9 @@ def confirm_proposal(
         exam_id = new_exam.exam_id
         
         # 2. Derslik ve Gözetmen atamalarını ilgili tablolara (ExamRoom ve ExamInvigilator) kaydet
-        # Öğrenci - Derslik dağılımını backend'de güvenilir şekilde hesapla
-        from app.models.student_exam_room import StudentExamRoom
-        from app.models.room import Room
-        from app.models.student_course import StudentCourse
-        
         distributions_map = {}
         
         # Sadece seçilen odaların Room objelerini çek
-        selected_room_codes = [r.room_code for r in request.rooms]
-        from sqlalchemy import select
         selected_rooms = db.execute(
             select(Room).where(Room.room_code.in_(selected_room_codes))
         ).scalars().all()
@@ -156,18 +171,18 @@ def confirm_proposal(
                 db.add(new_student_room)
             
         # 3. Tüm işlemler başarılıysa tek bir transaction içinde onayla (Commit)
+        print(f"[THREAD] Committing transaction for {request.course_code}")
         db.commit()
+        print(f"[THREAD] Transaction committed")
         
         return SchedulingConfirmResponse(
-            success=True,
-            message="Sınav başarıyla planlandı ve veritabanına kaydedildi.",
+            success=True, 
+            message="Sınav başarıyla planlandı.",
             exam_id=exam_id
         )
-        
-    except Exception as e:
-        # Hata durumunda hiçbir kaydı bırakma, geri al (Rollback)
+    except HTTPException:
         db.rollback()
-        return SchedulingConfirmResponse(
-            success=False,
-            message=f"Kayıt sırasında bir hata oluştu. İşlem iptal edildi: {str(e)}"
-        )
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Sınav kaydedilirken beklenmeyen bir hata oluştu: {str(e)}")

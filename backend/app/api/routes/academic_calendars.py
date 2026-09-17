@@ -5,7 +5,9 @@ from app.db.database import get_db
 from app.schemas.academic_calendar import AcademicCalendarResponse, AcademicCalendarCreate, AcademicCalendarUpdate
 from app.services.academic_calendar_service import AcademicCalendarService
 
-router = APIRouter()
+from app.api.deps import get_current_secretary_or_admin
+from fastapi import Depends
+router = APIRouter(dependencies=[Depends(get_current_secretary_or_admin)])
 service = AcademicCalendarService()
 
 @router.get("/academic-calendars", response_model=list[AcademicCalendarResponse])

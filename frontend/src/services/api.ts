@@ -14,14 +14,49 @@ import type {
   AcademicCalendarUpdateData 
 } from "../types/academic_calendars";
 
+export interface User {
+  KullaniciID: number;
+  KullaniciAdi: string;
+  Rol: string;
+}
 
-const BASE_URL = "http://localhost:8000";
+export interface UserCreateData {
+  username: string;
+  password?: string;
+  role: string;
+}
+
+export interface UserUpdateData {
+  username?: string;
+  password?: string;
+  role?: string;
+}
+
+
+const BASE_URL = "http://localhost:8000/api/v1";
 
 /**
  * Yardımcı fonksiyon: Fetch isteklerini işler ve backend'den gelen HTTP hatalarını yakalar.
+ * Ayrıca localStorage'dan token'ı alarak Authorization header'ına ekler.
  */
 async function fetchWithErrorHandling<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, options);
+  const token = localStorage.getItem("token");
+  const headers = new Headers(options?.headers || {});
+  
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const newOptions = { ...options, headers };
+  const response = await fetch(url, newOptions);
+
+  if (response.status === 401) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("username");
+    window.location.reload();
+    throw new Error("Oturum süresi doldu. Lütfen tekrar giriş yapın.");
+  }
 
   if (!response.ok) {
     let errorMessage = `HTTP Error ${response.status}`;
@@ -39,6 +74,11 @@ async function fetchWithErrorHandling<T>(url: string, options?: RequestInit): Pr
       if (text) errorMessage = text;
     }
     throw new Error(errorMessage);
+  }
+
+  // Handle 204 No Content which has no JSON body
+  if (response.status === 204) {
+    return {} as T;
   }
 
   return response.json();
@@ -351,6 +391,45 @@ export async function updateAcademicCalendar(
 export async function deleteAcademicCalendar(calendarId: number): Promise<{ success: boolean; message: string }> {
   return fetchWithErrorHandling<{ success: boolean; message: string }>(
     `${BASE_URL}/academic-calendars/${calendarId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+// ========================
+// Kullanıcı Yönetimi (Admin)
+// ========================
+
+export async function getUsers(): Promise<User[]> {
+  return fetchWithErrorHandling<User[]>(`${BASE_URL}/users`);
+}
+
+export async function createUser(data: UserCreateData): Promise<User> {
+  return fetchWithErrorHandling<User>(
+    `${BASE_URL}/users`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function updateUser(userId: number, data: UserUpdateData): Promise<User> {
+  return fetchWithErrorHandling<User>(
+    `${BASE_URL}/users/${userId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function deleteUser(userId: number): Promise<void> {
+  return fetchWithErrorHandling<void>(
+    `${BASE_URL}/users/${userId}`,
     {
       method: "DELETE",
     }

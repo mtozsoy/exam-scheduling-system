@@ -10,6 +10,13 @@ from app.db.database import SessionLocal
 from app.models.student_exam_room import StudentExamRoom
 from sqlalchemy import select
 
+from app.api.deps import get_current_secretary_or_admin
+from app.models.user import User
+
+def mock_auth():
+    return User(KullaniciID=1, KullaniciAdi='admin', Rol='admin')
+
+app.dependency_overrides[get_current_secretary_or_admin] = mock_auth
 client = TestClient(app)
 
 def test_student_distribution():

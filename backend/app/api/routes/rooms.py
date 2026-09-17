@@ -5,7 +5,9 @@ from app.db.database import get_db
 from app.schemas.room import RoomResponse, RoomCreate, RoomUpdate
 from app.services.room_service import RoomService
 
-router = APIRouter()
+from app.api.deps import get_current_secretary_or_admin
+from fastapi import Depends
+router = APIRouter(dependencies=[Depends(get_current_secretary_or_admin)])
 
 
 @router.get("/rooms", response_model=list[RoomResponse])

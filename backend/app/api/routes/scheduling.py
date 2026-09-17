@@ -19,9 +19,11 @@ from app.models.student_course import StudentCourse
 from app.services.scheduling_service import SchedulingService
 from app.services.room_service import RoomService
 
-router = APIRouter(prefix="/scheduling", tags=["scheduling"])
+from app.api.deps import get_current_secretary_or_admin
+from fastapi import Depends
+router = APIRouter(tags=["scheduling"], dependencies=[Depends(get_current_secretary_or_admin)])
 
-@router.post("/proposals")
+@router.post("/scheduling/proposals")
 def generate_proposals(
     request: SchedulingProposalRequest, 
     db: Session = Depends(get_db)
@@ -57,7 +59,7 @@ def generate_proposals(
     
     return result
 
-@router.post("/confirm", response_model=SchedulingConfirmResponse)
+@router.post("/scheduling/confirm", response_model=SchedulingConfirmResponse)
 def confirm_proposal(
     request: SchedulingConfirmRequest,
     db: Session = Depends(get_db)

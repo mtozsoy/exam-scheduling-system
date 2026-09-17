@@ -6,7 +6,9 @@ from app.services.student_service import StudentService
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-router = APIRouter()
+from app.api.deps import get_current_secretary_or_admin
+from fastapi import Depends
+router = APIRouter(dependencies=[Depends(get_current_secretary_or_admin)])
 
 
 @router.get("/students", response_model=list[StudentResponse])

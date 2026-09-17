@@ -9,7 +9,9 @@ from app.services.exam_room_service import ExamRoomService
 from app.services.exam_service import ExamService
 from app.services.exam_invigilator_service import ExamInvigilatorService
 
-router = APIRouter()
+from app.api.deps import get_current_secretary_or_admin
+from fastapi import Depends
+router = APIRouter(dependencies=[Depends(get_current_secretary_or_admin)])
 
 
 @router.get("/exams", response_model=list[ExamResponse])

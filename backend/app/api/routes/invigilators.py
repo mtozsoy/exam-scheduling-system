@@ -5,7 +5,9 @@ from app.db.database import get_db
 from app.schemas.invigilator import InvigilatorResponse, InvigilatorCreate, InvigilatorUpdate
 from app.services.invigilator_service import InvigilatorService
 
-router = APIRouter()
+from app.api.deps import get_current_secretary_or_admin
+from fastapi import Depends
+router = APIRouter(dependencies=[Depends(get_current_secretary_or_admin)])
 
 
 @router.get("/invigilators", response_model=list[InvigilatorResponse])

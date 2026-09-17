@@ -7,7 +7,9 @@ from app.schemas.teacher import TeacherResponse
 from app.services.course_service import CourseService
 from app.services.course_teacher_service import CourseTeacherService
 
-router = APIRouter()
+from app.api.deps import get_current_secretary_or_admin
+from fastapi import Depends
+router = APIRouter(dependencies=[Depends(get_current_secretary_or_admin)])
 
 
 @router.get("/courses", response_model=list[CourseResponse])

@@ -6,9 +6,14 @@ interface DashboardLayoutProps {
   children: ReactNode;
   activePage: PageView;
   onNavigate: (page: PageView) => void;
+  userRole: string;
+  onLogout: () => void;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage, onNavigate }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage, onNavigate, userRole, onLogout }) => {
+  const username = localStorage.getItem('username') || 'Kullanıcı';
+  const roleDisplay = userRole === 'admin' ? 'Admin Paneli' : 'Sekreter Paneli';
+  
   return (
     <div className="dashboard-wrapper">
       {/* Sidebar */}
@@ -78,6 +83,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage,
                 Akademik Takvim
               </a>
             </li>
+            
+            {userRole === 'admin' && (
+              <li>
+                <a 
+                  href="#" 
+                  className={`nav-item ${activePage === 'users' ? 'active' : ''}`}
+                  onClick={(e) => { e.preventDefault(); onNavigate('users'); }}
+                >
+                  Kullanıcı Yönetimi
+                </a>
+              </li>
+            )}
+            
+            <li>
+              <a 
+                href="#" 
+                className="nav-item logout-link"
+                style={{ color: '#ef4444', marginTop: '1rem' }}
+                onClick={(e) => { e.preventDefault(); onLogout(); }}
+              >
+                Çıkış Yap
+              </a>
+            </li>
           </ul>
         </nav>
 
@@ -97,12 +125,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage,
                activePage === 'rooms' ? 'Derslikler' : 
                activePage === 'invigilators' ? 'Gözetmenler' : 
                activePage === 'courses' ? 'Dersler' : 
-               activePage === 'academic_calendars' ? 'Akademik Takvim' : 'Sayfa'}
+               activePage === 'academic_calendars' ? 'Akademik Takvim' : 
+               activePage === 'users' ? 'Kullanıcı Yönetimi' : 'Sayfa'}
             </h3>
           </div>
           <div className="user-profile">
-            <div className="avatar">A</div>
-            <span>Admin Paneli</span>
+            <div className="avatar">{username.charAt(0).toUpperCase()}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <span style={{ fontWeight: 600 }}>{username}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{roleDisplay}</span>
+            </div>
           </div>
         </header>
 

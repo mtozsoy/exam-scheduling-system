@@ -99,8 +99,12 @@ def test_concurrent_scheduling_race_condition(client_real_db):
     
     results = []
     
+    login_resp = client.post("/api/v1/auth/login", data={"username": "admin", "password": "admin123"})
+    token = login_resp.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    
     def worker():
-        resp = client.post("/scheduling/confirm", json=payload)
+        resp = client.post("/api/v1/scheduling/confirm", json=payload, headers=headers)
         results.append(resp)
         
     t1 = threading.Thread(target=worker)

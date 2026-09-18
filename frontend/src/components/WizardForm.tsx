@@ -6,16 +6,17 @@ import './WizardForm.css';
 
 interface WizardFormProps {
   onProposalsReceived: (proposals: Proposal[], courseCode: string, examType: string) => void;
+  examType: string;
+  onExamTypeChange: (examType: string) => void;
 }
 
-const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived }) => {
+const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived, examType, onExamTypeChange }) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [scheduledExams, setScheduledExams] = useState<Exam[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [initError, setInitError] = useState<string | null>(null);
 
   const [courseCode, setCourseCode] = useState<string>('');
-  const [examType, setExamType] = useState<string>('Vize');
   const [durationMinutes, setDurationMinutes] = useState<number>(90);
   const [dailyStartTime, setDailyStartTime] = useState<string>('09:00');
   const [dailyEndTime, setDailyEndTime] = useState<string>('17:00');
@@ -143,7 +144,7 @@ const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived }) => {
             <select 
               id="examType"
               value={examType} 
-              onChange={(e) => setExamType(e.target.value)}
+              onChange={(e) => onExamTypeChange(e.target.value)}
               required
             >
               <option value="Vize">Vize</option>

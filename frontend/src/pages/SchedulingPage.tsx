@@ -9,7 +9,7 @@ import './SchedulingPage.css';
 const SchedulingPage: React.FC = () => {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
-  const [selectedExamType, setSelectedExamType] = useState<string>('');
+  const [selectedExamType, setSelectedExamType] = useState<string>('Vize');
 
   const [confirmingIndex, setConfirmingIndex] = useState<number | null>(null);
   const [confirmedIndex, setConfirmedIndex] = useState<number | null>(null);
@@ -25,6 +25,16 @@ const SchedulingPage: React.FC = () => {
     try {
       const data = await getActiveAcademicCalendars();
       setActiveCalendars(data);
+      
+      // Update selectedExamType if current one is not active and there are active calendars
+      setSelectedExamType(prevType => {
+        const hasMatch = data.some(c => c.exam_type === prevType);
+        if (!hasMatch && data.length > 0) {
+          return data[0].exam_type;
+        }
+        return prevType;
+      });
+      
     } catch (err) {
       console.error('Aktif takvimler yüklenemedi:', err);
     }
@@ -39,6 +49,7 @@ const SchedulingPage: React.FC = () => {
   ) => {
     setProposals(newProposals);
     setSelectedCourse(courseCode);
+    // setSelectedExamType is already handled by onExamTypeChange, but we keep it here just in case.
     setSelectedExamType(examType);
     
     // Yeni proposal'lar geldiğinde state'leri sıfırla
@@ -89,7 +100,11 @@ const SchedulingPage: React.FC = () => {
         {/* Sol Kolon */}
         <div className="left-column">
           <div className="wizard-container">
-            <WizardForm onProposalsReceived={handleProposalsReceived} />
+            <WizardForm 
+              onProposalsReceived={handleProposalsReceived} 
+              examType={selectedExamType}
+              onExamTypeChange={setSelectedExamType}
+            />
           </div>
 
           {proposals.length > 0 && (

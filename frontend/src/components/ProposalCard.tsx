@@ -55,12 +55,12 @@ const ProposalCard: React.FC<ProposalCardProps> = ({
         )}
       </div>
 
-      {confirmError && <div className="card-alert error">{confirmError}</div>}
-      {isConfirmed && <div className="card-alert success">Sınav başarıyla onaylandı ve kaydedildi!</div>}
+      {confirmError && <div className="alert-error" style={{marginTop: '20px'}}>{confirmError}</div>}
+      {isConfirmed && <div className="alert-success" style={{marginTop: '20px'}}>✓ Sınav başarıyla onaylandı ve kaydedildi!</div>}
 
       <div className="proposal-card-footer">
         <button
-          className={`confirm-btn ${isConfirmed ? 'success-btn' : ''}`}
+          className={`btn-primary confirm-btn ${isConfirmed ? 'success-btn' : ''}`}
           onClick={onConfirm}
           disabled={isConfirming || isConfirmed}
         >

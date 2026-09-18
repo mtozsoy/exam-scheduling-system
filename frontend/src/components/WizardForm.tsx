@@ -71,6 +71,12 @@ const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+
+    if (!courseCode) {
+      setSubmitError('Planlanacak uygun ders bulunamadı. Lütfen önce ders ekleyin veya sistemdeki tüm derslerin planlanıp planlanmadığını kontrol edin.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -186,8 +192,8 @@ const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived }) => {
 
         <button 
           type="submit" 
-          className="submit-btn" 
-          disabled={isSubmitting}
+          className="btn-primary submit-btn" 
+          disabled={isSubmitting || !courseCode}
         >
           {isSubmitting ? 'Hesaplanıyor...' : 'Plan Öner'}
         </button>

@@ -6,6 +6,7 @@ const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   
   // Form state
@@ -40,6 +41,8 @@ const UsersPage: React.FC = () => {
     setUsername('');
     setPassword('');
     setRole('secretary');
+    setError(null);
+    setSuccessMsg(null);
     setShowModal(true);
   };
 
@@ -49,28 +52,33 @@ const UsersPage: React.FC = () => {
     setUsername(user.KullaniciAdi);
     setPassword(''); // Edit modunda şifre boş başlar (sadece değişecekse girilir)
     setRole(user.Rol);
+    setError(null);
+    setSuccessMsg(null);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setError(null);
+    setSuccessMsg(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (isEditing && editId !== null) {
-        const updateData: UserUpdateData = { username, role };
-        if (password.trim() !== '') {
-          updateData.password = password;
+        if (isEditing && editId !== null) {
+          const updateData: UserUpdateData = { username, role };
+          if (password.trim() !== '') {
+            updateData.password = password;
+          }
+          await updateUser(editId, updateData);
+          setSuccessMsg('Kullanıcı başarıyla güncellendi.');
+        } else {
+          await createUser({ username, password, role });
+          setSuccessMsg('Kullanıcı başarıyla eklendi.');
         }
-        await updateUser(editId, updateData);
-      } else {
-        await createUser({ username, password, role });
-      }
-      closeModal();
-      fetchUsers();
+        closeModal();
+        fetchUsers();
     } catch (err: any) {
       setError(err.message || 'Bir hata oluştu.');
     }
@@ -78,28 +86,30 @@ const UsersPage: React.FC = () => {
 
   const handleDelete = async (user: User) => {
     if (user.KullaniciAdi === currentUsername) {
-      alert("Kendi hesabınızı silemezsiniz.");
+      setError("Kendi hesabınızı silemezsiniz.");
       return;
     }
     if (window.confirm(`"${user.KullaniciAdi}" kullanıcısını silmek istediğinize emin misiniz?`)) {
       try {
         await deleteUser(user.KullaniciID);
+        setSuccessMsg('Kullanıcı başarıyla silindi.');
         fetchUsers();
       } catch (err: any) {
-        alert(err.message || 'Silme işlemi başarısız.');
+        setError(err.message || 'Silme işlemi başarısız.');
       }
     }
   };
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <h2>Kullanıcı Yönetimi</h2>
-        <button className="primary-button" onClick={openAddModal}>Yeni Kullanıcı Ekle</button>
+      <div className="page-header-desc">
+        <p>Sistemdeki kullanıcıları yönetin, yeni yetkili ekleyin veya düzenleyin.</p>
+        <button className="btn-primary" onClick={openAddModal}>+ Yeni Kullanıcı Ekle</button>
       </div>
 
+      {successMsg && <div className="alert-success">✓ {successMsg}</div>}
       {loading && <p>Yükleniyor...</p>}
-      {error && !showModal && <p className="error-text">{error}</p>}
+      {error && !showModal && <div className="alert-error">✕ {error}</div>}
 
       <div className="table-container">
         <table className="data-table">
@@ -122,10 +132,10 @@ const UsersPage: React.FC = () => {
                   </span>
                 </td>
                 <td>
-                  <div className="action-buttons">
-                    <button className="edit-button" onClick={() => openEditModal(user)}>Düzenle</button>
+                  <div className="actions-cell">
+                    <button className="btn-edit" onClick={() => openEditModal(user)}>Düzenle</button>
                     {user.KullaniciAdi !== currentUsername && (
-                      <button className="delete-button" onClick={() => handleDelete(user)}>Sil</button>
+                      <button className="btn-delete" onClick={() => handleDelete(user)}>Sil</button>
                     )}
                   </div>
                 </td>
@@ -143,9 +153,13 @@ const UsersPage: React.FC = () => {
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>{isEditing ? 'Kullanıcıyı Düzenle' : 'Yeni Kullanıcı Ekle'}</h3>
-            {error && <p className="error-text">{error}</p>}
+            <div className="modal-header">
+              <h3>{isEditing ? 'Kullanıcıyı Düzenle' : 'Yeni Kullanıcı Ekle'}</h3>
+              <button className="btn-close" onClick={closeModal}>×</button>
+            </div>
             <form onSubmit={handleSubmit}>
+              <div className="modal-body">
+                {error && <div className="alert-error">{error}</div>}
               <div className="form-group">
                 <label>Kullanıcı Adı</label>
                 <input 
@@ -171,9 +185,10 @@ const UsersPage: React.FC = () => {
                   <option value="admin">Admin</option>
                 </select>
               </div>
-              <div className="modal-actions">
-                <button type="button" className="secondary-button" onClick={closeModal}>İptal</button>
-                <button type="submit" className="primary-button">Kaydet</button>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn-secondary" onClick={closeModal}>İptal</button>
+                <button type="submit" className="btn-primary">Kaydet</button>
               </div>
             </form>
           </div>

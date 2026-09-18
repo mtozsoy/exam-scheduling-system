@@ -63,8 +63,19 @@ async function fetchWithErrorHandling<T>(url: string, options?: RequestInit): Pr
     try {
       const errorData = await response.json();
       if (errorData.detail) {
-        // FastAPI'den dönen standart hata (HTTPException detail)
-        errorMessage = errorData.detail;
+        // FastAPI'den dönen standart hata (HTTPException detail) veya Pydantic validasyon hatası dizisi
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((err: any) => {
+            const field = err.loc && err.loc.length > 0 ? err.loc[err.loc.length - 1] : "Girdi";
+            return `${field}: ${err.msg}`;
+          }).join(' | ');
+        } else if (typeof errorData.detail === 'object') {
+          errorMessage = JSON.stringify(errorData.detail);
+        } else {
+          errorMessage = String(errorData.detail);
+        }
       } else if (errorData.message) {
         errorMessage = errorData.message;
       }
@@ -406,23 +417,33 @@ export async function getUsers(): Promise<User[]> {
 }
 
 export async function createUser(data: UserCreateData): Promise<User> {
+  const payload = {
+    KullaniciAdi: data.username,
+    Rol: data.role,
+    password: data.password,
+  };
   return fetchWithErrorHandling<User>(
     `${BASE_URL}/users`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     }
   );
 }
 
 export async function updateUser(userId: number, data: UserUpdateData): Promise<User> {
+  const payload: Record<string, string> = {};
+  if (data.username !== undefined) payload.KullaniciAdi = data.username;
+  if (data.role !== undefined) payload.Rol = data.role;
+  if (data.password !== undefined) payload.password = data.password;
+
   return fetchWithErrorHandling<User>(
     `${BASE_URL}/users/${userId}`,
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     }
   );
 }

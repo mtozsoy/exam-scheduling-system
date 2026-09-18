@@ -28,7 +28,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage,
 
         <nav className="sidebar-nav">
           <ul>
-            <li><a href="#" className="nav-item">Ana Sayfa</a></li>
+            <li>
+              <a 
+                href="#" 
+                className={`nav-item ${activePage === 'scheduling' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); onNavigate('scheduling'); }}
+              >
+                Ana Sayfa
+              </a>
+            </li>
             <li>
               <a 
                 href="#" 
@@ -100,7 +108,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage,
               <a 
                 href="#" 
                 className="nav-item logout-link"
-                style={{ color: '#ef4444', marginTop: '1rem' }}
                 onClick={(e) => { e.preventDefault(); onLogout(); }}
               >
                 Çıkış Yap

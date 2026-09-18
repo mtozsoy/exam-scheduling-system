@@ -93,7 +93,7 @@ const ExamsPage: React.FC = () => {
     setEditData({
       exam_type: exam.exam_type,
       date: exam.date,
-      start_time: exam.start_time,
+      start_time: formatTime(exam.start_time),
       duration_minutes: exam.duration_minutes
     });
     setSuccessMsg(null);
@@ -123,7 +123,13 @@ const ExamsPage: React.FC = () => {
     try {
       setIsUpdating(true);
       setError(null);
-      await updateExam(selectedExam.exam_id, editData);
+
+      const payload = { ...editData };
+      if (payload.start_time && payload.start_time.split(':').length === 2) {
+        payload.start_time = `${payload.start_time}:00`;
+      }
+
+      await updateExam(selectedExam.exam_id, payload);
       setSuccessMsg("Sınav başarıyla güncellendi.");
       setIsEditing(false);
       setSelectedExam(null);
@@ -136,7 +142,7 @@ const ExamsPage: React.FC = () => {
   };
 
   return (
-    <div className="exams-page">
+    <div className="page-container">
       <div className="page-header-desc">
         <p>Sistemde planlanmış sınavları görüntüleyin.</p>
       </div>
@@ -165,7 +171,7 @@ const ExamsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="exams-content">
+      <div className="page-content">
         {loading && <div className="loading-state">Sınavlar yükleniyor...</div>}
         
         {!loading && filteredExams.length === 0 && (
@@ -174,7 +180,7 @@ const ExamsPage: React.FC = () => {
 
         {!loading && filteredExams.length > 0 && (
           <div className="table-container">
-            <table className="exams-table">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Ders</th>
@@ -265,8 +271,8 @@ const ExamsPage: React.FC = () => {
                     <label>Başlangıç Saati</label>
                     <input 
                       type="time" 
-                      value={formatTime(editData.start_time)}
-                      onChange={e => setEditData({...editData, start_time: e.target.value + ":00"})}
+                      value={editData.start_time}
+                      onChange={e => setEditData({...editData, start_time: e.target.value})}
                       disabled={isUpdating}
                     />
                   </div>
@@ -339,7 +345,7 @@ const ExamsPage: React.FC = () => {
                 <>
                   <button 
                     className="btn-secondary" 
-                    onClick={() => setSelectedExam(null)}
+                    onClick={() => { setSelectedExam(null); setError(null); setSuccessMsg(null); }}
                     disabled={isUpdating}
                   >
                     İptal
@@ -353,7 +359,7 @@ const ExamsPage: React.FC = () => {
                   </button>
                 </>
               ) : (
-                <button className="btn-primary" onClick={() => setSelectedExam(null)}>Kapat</button>
+                <button className="btn-primary" onClick={() => { setSelectedExam(null); setError(null); setSuccessMsg(null); }}>Kapat</button>
               )}
             </div>
           </div>

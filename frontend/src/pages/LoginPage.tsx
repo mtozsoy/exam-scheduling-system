@@ -53,7 +53,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
         
         <form onSubmit={handleSubmit} className="login-form">
-          {error && <div className="login-error">{error}</div>}
+          {error && <div className="alert-error" style={{justifyContent: 'center'}}>{error}</div>}
           
           <div className="form-group">
             <label htmlFor="username">Kullanıcı Adı</label>
@@ -77,7 +77,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             />
           </div>
           
-          <button type="submit" disabled={loading} className="login-button">
+          <button type="submit" disabled={loading} className="btn-primary login-button">
             {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
           </button>
         </form>

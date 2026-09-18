@@ -77,6 +77,8 @@ const AcademicCalendarsPage: React.FC = () => {
   const closeModal = () => {
     if (isSubmitting) return;
     setIsModalOpen(false);
+    setError(null);
+    setSuccessMsg(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,7 +133,7 @@ const AcademicCalendarsPage: React.FC = () => {
   };
 
   return (
-    <div className="calendars-page">
+    <div className="page-container">
       <div className="page-header-desc">
         <p>Sınav dönemlerini yönetin, yeni akademik takvim ekleyin veya aktif olanları belirleyin.</p>
         <button className="btn-primary" onClick={openAddModal}>+ Yeni Takvim Ekle</button>
@@ -140,7 +142,7 @@ const AcademicCalendarsPage: React.FC = () => {
       {successMsg && <div className="alert-success">✓ {successMsg}</div>}
       {error && !isModalOpen && <div className="alert-error">✕ {error}</div>}
 
-      <div className="calendars-content">
+      <div className="page-content">
         {loading && <div className="loading-state">Takvimler yükleniyor...</div>}
         
         {!loading && calendars.length === 0 && (
@@ -149,7 +151,7 @@ const AcademicCalendarsPage: React.FC = () => {
 
         {!loading && calendars.length > 0 && (
           <div className="table-container">
-            <table className="calendars-table">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Yıl</th>

@@ -66,6 +66,8 @@ const CoursesPage: React.FC = () => {
   const closeModal = () => {
     if (isSubmitting) return;
     setIsModalOpen(false);
+    setError(null);
+    setSuccessMsg(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,7 +114,7 @@ const CoursesPage: React.FC = () => {
   };
 
   return (
-    <div className="courses-page">
+    <div className="page-container">
       <div className="page-header-desc">
         <p>Sistemdeki dersleri görüntüleyin, yeni ders ekleyin veya mevcut olanları düzenleyin.</p>
         <button className="btn-primary" onClick={openAddModal}>+ Yeni Ders Ekle</button>
@@ -121,7 +123,7 @@ const CoursesPage: React.FC = () => {
       {successMsg && <div className="alert-success">✓ {successMsg}</div>}
       {error && !isModalOpen && <div className="alert-error">✕ {error}</div>}
 
-      <div className="courses-content">
+      <div className="page-content">
         {loading && <div className="loading-state">Dersler yükleniyor...</div>}
         
         {!loading && courses.length === 0 && (
@@ -130,7 +132,7 @@ const CoursesPage: React.FC = () => {
 
         {!loading && courses.length > 0 && (
           <div className="table-container">
-            <table className="courses-table">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Ders Kodu</th>

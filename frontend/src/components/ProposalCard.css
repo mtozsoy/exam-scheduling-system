@@ -102,57 +102,11 @@
   font-weight: 600;
 }
 
-.card-alert {
-  margin-top: 20px;
-  padding: 12px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
 
-.card-alert.error {
-  background: #ffebee;
-  border: 1px solid #ffcdd2;
-  color: var(--error);
-}
-
-.card-alert.success {
-  background: #e8f5e9;
-  border: 1px solid #c8e6c9;
-  color: var(--success);
-}
-
-.proposal-card-footer {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.confirm-btn {
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 20px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.confirm-btn:hover:not(:disabled) {
-  background: var(--primary-hover);
-}
-
-.confirm-btn:disabled {
-  background: #cccccc;
-  color: #666666;
-  cursor: not-allowed;
-}
-
-.confirm-btn.success-btn:disabled {
-  background: var(--success);
-  color: #fff;
+.success-btn:disabled {
+  background: var(--success) !important;
+  color: #fff !important;
+  opacity: 1 !important;
 }
 
 @media (max-width: 480px) {

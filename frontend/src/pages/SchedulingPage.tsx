@@ -104,6 +104,7 @@ const SchedulingPage: React.FC = () => {
               onProposalsReceived={handleProposalsReceived} 
               examType={selectedExamType}
               onExamTypeChange={setSelectedExamType}
+              activeCalendar={currentActiveCalendar}
             />
           </div>
 

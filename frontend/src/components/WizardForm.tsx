@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { getCourses, getSchedulingProposals, getExams } from '../services/api';
 import type { Course, Proposal } from '../types/scheduling';
 import type { Exam } from '../types/exams';
+import type { AcademicCalendar } from '../types/academic_calendars';
 import './WizardForm.css';
 
 interface WizardFormProps {
   onProposalsReceived: (proposals: Proposal[], courseCode: string, examType: string) => void;
   examType: string;
   onExamTypeChange: (examType: string) => void;
+  activeCalendar?: AcademicCalendar;
 }
 
-const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived, examType, onExamTypeChange }) => {
+const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived, examType, onExamTypeChange, activeCalendar }) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [scheduledExams, setScheduledExams] = useState<Exam[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(true);
@@ -48,17 +50,28 @@ const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived, examType, 
     fetchData();
   }, []);
 
+  const isCourseScheduledInActiveCalendar = React.useCallback((cCode: string) => {
+    return scheduledExams.some(e => {
+      if (e.course_code !== cCode || e.exam_type !== examType) return false;
+      if (activeCalendar) {
+        const examDate = new Date(e.date);
+        const startDate = new Date(activeCalendar.start_date);
+        const endDate = new Date(activeCalendar.end_date);
+        return examDate >= startDate && examDate <= endDate;
+      }
+      return true;
+    });
+  }, [scheduledExams, examType, activeCalendar]);
+
   // Update selected course if the current one is now disabled due to examType change
   useEffect(() => {
     if (courses.length > 0) {
-      const isCurrentScheduled = scheduledExams.some(
-        e => e.course_code === courseCode && e.exam_type === examType
-      );
+      const isCurrentScheduled = isCourseScheduledInActiveCalendar(courseCode);
       
       if (isCurrentScheduled) {
         // Find first available course
         const firstAvailable = courses.find(
-          c => !scheduledExams.some(e => e.course_code === c.course_code && e.exam_type === examType)
+          c => !isCourseScheduledInActiveCalendar(c.course_code)
         );
         if (firstAvailable) {
           setCourseCode(firstAvailable.course_code);
@@ -67,7 +80,7 @@ const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived, examType, 
         }
       }
     }
-  }, [examType, scheduledExams, courses, courseCode]);
+  }, [examType, scheduledExams, courses, courseCode, activeCalendar, isCourseScheduledInActiveCalendar]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +141,7 @@ const WizardForm: React.FC<WizardFormProps> = ({ onProposalsReceived, examType, 
             required
           >
             {courses.map(c => {
-              const isScheduled = scheduledExams.some(e => e.course_code === c.course_code && e.exam_type === examType);
+              const isScheduled = isCourseScheduledInActiveCalendar(c.course_code);
               return (
                 <option key={c.course_code} value={c.course_code} disabled={isScheduled}>
                   {c.course_code} - {c.course_name} {isScheduled ? "(Planlandı)" : ""}

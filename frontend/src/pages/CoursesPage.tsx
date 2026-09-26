@@ -213,14 +213,15 @@ const CoursesPage: React.FC = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label>Dönem</label>
-                    <input 
-                      type="number" 
+                    <select
                       value={formData.term}
-                      onChange={e => setFormData({...formData, term: parseInt(e.target.value, 10) || 1})}
+                      onChange={e => setFormData({...formData, term: parseInt(e.target.value, 10)})}
                       disabled={isSubmitting}
                       required
-                      min="1"
-                    />
+                    >
+                      <option value={1}>1 / Güz</option>
+                      <option value={2}>2 / Bahar</option>
+                    </select>
                   </div>
                   <div className="form-group">
                     <label>Yarıyıl</label>
